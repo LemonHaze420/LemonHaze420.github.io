@@ -1,0 +1,276 @@
+<!DOCTYPE HTML>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta http-equiv="pragma" content="no-cache">
+  <meta http-equiv="cache-control" content="no-cache">
+  <meta http-equiv="expires" content="0">
+  
+  <title>Turning attack traffic into reports | LemonHaze</title>
+  <meta name="author" content="LemonHaze">
+  
+  <meta name="description" content="Random thoughts, games, experiments and whatever else comes to mind.">
+  
+  
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+
+  <meta property="og:title" content="Turning attack traffic into reports"/>
+  <meta property="og:site_name" content="LemonHaze"/>
+
+  
+    <meta property="og:image" content=""/>
+  
+
+  
+    <link rel="alternative" href="/atom.xml" title="LemonHaze" type="application/atom+xml">
+  
+  
+    <link href="/favicon.svg" rel="icon">
+  
+  
+  <link rel="stylesheet" href="/css/bootstrap.min.css" media="screen" type="text/css">
+  <link rel="stylesheet" href="/css/font-awesome.css" media="screen" type="text/css">
+  <link rel="stylesheet" href="/css/style.css" media="screen" type="text/css">
+  <link rel="stylesheet" href="/css/responsive.css" media="screen" type="text/css">
+  <link rel="stylesheet" href="/css/highlight.css" media="screen" type="text/css">
+  <link rel="stylesheet" href="/css/prism.css" media="screen" type="text/css">
+  <link rel="stylesheet" href="/css/google-fonts.css" media="screen" type="text/css">
+  <!--[if lt IE 9]><script src="//html5shiv.googlecode.com/svn/trunk/html5.js"></script><![endif]-->
+
+  <script src="/js/jquery-2.0.3.min.js"></script>
+
+  <!-- analytics -->
+  
+
+
+
+
+  <link rel="stylesheet" href="/css/lemonhaze.css">
+<meta name="generator" content="Hexo 8.1.2"></head>
+
+ <body>  
+  <nav id="main-nav" class="navbar navbar-inverse navbar-fixed-top" role="navigation">
+    <div class="container">
+      <button type="button" class="navbar-header navbar-toggle" data-toggle="collapse" data-target=".navbar-collapse">
+		<span class="sr-only">Toggle navigation</span>
+        <span class="icon-bar"></span>
+        <span class="icon-bar"></span>
+        <span class="icon-bar"></span>
+      </button>
+	  <a class="navbar-brand" href="/">LemonHaze</a>
+      <div class="collapse navbar-collapse nav-menu">
+		<ul class="nav navbar-nav">
+		  
+		  <li>
+			<a href="/" title="Posts and random thoughts">
+			  <i class=""></i>Home
+			</a>
+		  </li>
+		  
+		  <li>
+			<a href="/archives/" title="All posts">
+			  <i class=""></i>Archives
+			</a>
+		  </li>
+		  
+		  <li>
+			<a href="/about/" title="History, projects and background">
+			  <i class=""></i>About
+			</a>
+		  </li>
+		  
+		  <li>
+			<a href="/atom.xml" title="Subscribe">
+			  <i class=""></i>RSS
+			</a>
+		  </li>
+		  
+		</ul>
+      </div>
+    </div> <!-- container -->
+</nav>
+<div class="clearfix"></div>
+
+  <div class="container">
+  	<div class="content">
+    	 
+
+
+	
+		<div class="page-header">
+			<h1> Turning attack traffic into reports</h1>
+		</div>
+	
+
+
+
+<div class="row post">
+	<!-- cols -->
+	
+	<div id="top_meta"></div>
+	<div class="col-md-9">
+	
+
+	<!-- content -->
+	<div class="mypage">		
+	  		
+
+	  <p>This happened a while ago, but I’ve always wanted to go through some of what happened in a little bit more detail rather than just giving bits and pieces in DMs, just never really had the time or the motivation to actually write something up myself for it, so I’m taking the opportunity to do that now. </p>
+<span id="more"></span>
+
+
+<p>I’ve maintained servers for a while now and I know enough to be able to and to know when to “set and forget” certain services, especially if it’s just some simple website, chances are we can run a very slim setup and we can mostly run completely “hands-free”. Lots of automated systems had already basically covered a lot of the surface area for attacks across a lot of the usual vectors, automated patch installation can help the vulnerability side and log auditing helps to identify suspicious activity, for example. </p>
+<p>Still, even with this “set and forget” approach, it’s still wise to keep tabs on what’s happening on your box. After all, it is literally a computer connected to the Internet, so exploitation of it is something we need to actively mitigate and protect against.. and no system is ever fully secure, at least not in this current world that we’re living in. For my example, this box was just a dumb webserver, it didn’t really do much dynamic rendering or have some bespoke backend that needed intense workflows to get things done, I could mostly just design and implement things the way I wanted to. </p>
+<p>At some point, during my regular checks over some of the server logs, I started to notice this really weird, annoying access pattern from lots of different IPs that all seemed to be trying to access a page that (1) didn’t exist, and (2) was actually intended to be reached by a consumer, retail Wi-Fi router, not my web server…</p>
+<p><img src="/images/log1.png" alt="Logs"></p>
+<p>These logs show an HTTP request attempting to exploit CVE-2023-1389, a vulnerability in the TP-Link Archer AX21. It targets the router’s <code>/cgi-bin/luci/;stok=/locale</code> endpoint, where the country parameter was vulnerable to command injection.</p>
+<p>At first, I was mostly researching up on the details of the vulnerability as there was not much needed to do on my side, we were not vulnerable because we were just a simple web server (there were no routers nearby!), but after getting annoyed by seeing them a few times, I started to get an idea..</p>
+<p>Since the threat actors were indiscriminately targeting as many hosts as possible, without checking if those hosts were vulnerable or not, their requests are refused by the web server because the page(s) they are looking for simply don’t exist. Our logs show the attempt, but the threat actor gained basically nothing in the process. Us, on the other hand, we now know (1) where attacks are being sent <strong>from</strong> and (2) where requests for the payload would be sent <strong>to</strong>.</p>
+<p>Their setup is assumed to be something like this:</p>
+<ol>
+<li>Threat Actor sets up some server that sprays as many hosts as possible</li>
+<li>TA sets up payload hosting on a different server</li>
+<li>TA has the server from (1) spray hosts by using rotated hosts provided to them by step 2. </li>
+<li>????</li>
+</ol>
+<p><strong>Each attempt shows the IP of the box that is hosting the exploit payload, while the HTTP request leaks the box which sent the request out.</strong></p>
+<p>With this knowledge at hand, I had an idea to set up a fake page that was located at the exact location that the TA expected to exist, and to then capture the request IP, filter out the request itself, validate that this was in fact an exploitation attempt, and then log, and notify me when there were about 10-20 of them that I hadn’t yet reviewed. I manually reviewed the first batch of 2, 5, 10 and 20 attempts and then wrote up a script which automated the entire process for me. </p>
+<p>The implementation is really basic, and in some ways, it’s pretty amateur, but that is all that’s needed for some things. I don’t really run this setup anymore, and I wouldn’t advise to use this script either for yourself, especially without looking at proper alternatives first. </p>
+<figure class="highlight php"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br><span class="line">56</span><br><span class="line">57</span><br><span class="line">58</span><br><span class="line">59</span><br><span class="line">60</span><br><span class="line">61</span><br><span class="line">62</span><br><span class="line">63</span><br><span class="line">64</span><br></pre></td><td class="code"><pre><span class="line"><span class="variable">$emailUsername</span> = <span class="string">&quot;sec@megacorp.com&quot;</span>;</span><br><span class="line"><span class="variable">$outputFile</span> = <span class="string">&quot;info.txt&quot;</span>;</span><br><span class="line"><span class="variable">$mail</span> = <span class="keyword">new</span> <span class="title class_">PHPMailer</span>(<span class="literal">true</span>);</span><br><span class="line"></span><br><span class="line"><span class="function"><span class="keyword">function</span> <span class="title">getClientIp</span>(<span class="params"></span>) </span>&#123;</span><br><span class="line">    <span class="keyword">if</span> (!<span class="keyword">empty</span>(<span class="variable">$_SERVER</span>[<span class="string">&#x27;HTTP_CLIENT_IP&#x27;</span>])) &#123;</span><br><span class="line">        <span class="variable">$ip</span> = <span class="variable">$_SERVER</span>[<span class="string">&#x27;HTTP_CLIENT_IP&#x27;</span>];</span><br><span class="line">    &#125; <span class="keyword">elseif</span> (!<span class="keyword">empty</span>(<span class="variable">$_SERVER</span>[<span class="string">&#x27;HTTP_X_FORWARDED_FOR&#x27;</span>])) &#123;</span><br><span class="line">        <span class="variable">$ip</span> = <span class="variable">$_SERVER</span>[<span class="string">&#x27;HTTP_X_FORWARDED_FOR&#x27;</span>];</span><br><span class="line">    &#125; <span class="keyword">else</span> &#123;</span><br><span class="line">        <span class="variable">$ip</span> = <span class="variable">$_SERVER</span>[<span class="string">&#x27;REMOTE_ADDR&#x27;</span>];</span><br><span class="line">    &#125;</span><br><span class="line">    <span class="keyword">return</span> <span class="variable">$ip</span>;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="comment">// Dump all of the data first.</span></span><br><span class="line"><span class="variable">$stok</span> = <span class="keyword">isset</span>(<span class="variable">$_GET</span>[<span class="string">&#x27;stok&#x27;</span>]) ? <span class="variable">$_GET</span>[<span class="string">&#x27;stok&#x27;</span>] : <span class="string">&#x27;&#x27;</span>;</span><br><span class="line"><span class="variable">$form</span> = <span class="keyword">isset</span>(<span class="variable">$_GET</span>[<span class="string">&#x27;form&#x27;</span>]) ? <span class="variable">$_GET</span>[<span class="string">&#x27;form&#x27;</span>] : <span class="string">&#x27;&#x27;</span>;</span><br><span class="line"><span class="variable">$operation</span> = <span class="keyword">isset</span>(<span class="variable">$_GET</span>[<span class="string">&#x27;operation&#x27;</span>]) ? <span class="variable">$_GET</span>[<span class="string">&#x27;operation&#x27;</span>] : <span class="string">&#x27;&#x27;</span>;</span><br><span class="line"><span class="variable">$country</span> = <span class="keyword">isset</span>(<span class="variable">$_GET</span>[<span class="string">&#x27;country&#x27;</span>]) ? <span class="variable">$_GET</span>[<span class="string">&#x27;country&#x27;</span>] : <span class="string">&#x27;&#x27;</span>;</span><br><span class="line"><span class="variable">$ipAddress</span> = <span class="title function_ invoke__">getClientIp</span>();</span><br><span class="line"></span><br><span class="line"><span class="keyword">if</span> (<span class="variable">$form</span> == <span class="string">&#x27;country&#x27;</span> &amp;&amp; <span class="variable">$operation</span> == <span class="string">&#x27;write&#x27;</span> &amp;&amp; !<span class="keyword">empty</span>(<span class="variable">$country</span>)) &#123;</span><br><span class="line">        <span class="variable">$data</span> = <span class="string">&quot;IP: &quot;</span> . <span class="title function_ invoke__">htmlspecialchars</span>(<span class="variable">$ipAddress</span>) . <span class="string">&quot;\n&quot;</span> . <span class="string">&quot;Data: &quot;</span> . <span class="title function_ invoke__">htmlspecialchars</span>(<span class="variable">$country</span>) . <span class="string">&quot;\n&quot;</span>;</span><br><span class="line"></span><br><span class="line">        <span class="comment">// Attempt to parse out the malicious host.</span></span><br><span class="line">        <span class="comment">//$pattern = &#x27;/wget\s+(http[s]?:\/\/[^\s;]+)/&#x27;;</span></span><br><span class="line">        <span class="variable">$pattern</span> = <span class="string">&#x27;/wget\s+(-O-\s+)?(http[s]?:\/\/[^\s|;]+)/&#x27;</span>;</span><br><span class="line">        <span class="variable">$url</span> = <span class="string">&quot;not found&quot;</span>;</span><br><span class="line">        <span class="keyword">if</span> (<span class="title function_ invoke__">preg_match</span>(<span class="variable">$pattern</span>, <span class="title function_ invoke__">htmlspecialchars</span>(<span class="variable">$country</span>), <span class="variable">$matches</span>)) &#123;</span><br><span class="line">            <span class="variable">$url</span> = <span class="variable">$matches</span>[<span class="number">2</span>];</span><br><span class="line">        &#125;</span><br><span class="line">        <span class="variable">$data</span> = <span class="variable">$data</span> . <span class="string">&quot;Malicious Host: &quot;</span> . <span class="variable">$url</span> . <span class="string">&quot;\n&quot;</span>;</span><br><span class="line"></span><br><span class="line">        <span class="comment">// If we detected a malicious host, we can attempt to fire off a report to urlhaus.</span></span><br><span class="line">        <span class="keyword">if</span> (<span class="variable">$url</span> != <span class="string">&quot;not found&quot;</span>) &#123;</span><br><span class="line">                <span class="variable">$output</span> = <span class="title function_ invoke__">shell_exec</span>(<span class="string">&quot;python3 /path/to/urlhaus.py -t &#x27;shellscript&#x27; -u &quot;</span> . <span class="title function_ invoke__">escapeshellarg</span>(<span class="variable">$url</span>) . <span class="string">&quot; 2&gt;&amp;1&quot;</span>);</span><br><span class="line">                <span class="variable">$data</span> = <span class="variable">$data</span> . <span class="string">&quot;urlhaus Response: \n&quot;</span> . <span class="variable">$output</span>;</span><br><span class="line">        &#125;</span><br><span class="line"></span><br><span class="line">        <span class="comment">// Finally, write to file and optionally email it.</span></span><br><span class="line">        <span class="title function_ invoke__">file_put_contents</span>(<span class="variable">$outputFile</span>,<span class="variable">$data</span>,FILE_APPEND|LOCK_EX);</span><br><span class="line"></span><br><span class="line">        <span class="keyword">try</span> &#123;</span><br><span class="line">            </span><br><span class="line">            <span class="variable">$mail</span>-&gt;Username   = <span class="variable">$emailUsername</span>;                 <span class="comment">// SMTP username</span></span><br><span class="line">            <span class="comment">// ... other boring SMTP stuff here ..</span></span><br><span class="line">            <span class="variable">$mail</span>-&gt;<span class="title function_ invoke__">setFrom</span>(<span class="variable">$emailUsername</span>, <span class="string">&#x27;DevOps&#x27;</span>);</span><br><span class="line">            <span class="variable">$mail</span>-&gt;<span class="title function_ invoke__">addAddress</span>(<span class="variable">$emailRecipient</span>, <span class="string">&#x27;DevOps&#x27;</span>);</span><br><span class="line">            <span class="variable">$mail</span>-&gt;<span class="title function_ invoke__">isHTML</span>(<span class="literal">true</span>);                                        <span class="comment">// Set email format to HTML</span></span><br><span class="line">            <span class="variable">$mail</span>-&gt;Subject = <span class="string">&#x27;Malicious Web Request Received&#x27;</span>;</span><br><span class="line">            <span class="variable">$mail</span>-&gt;Body    = <span class="title function_ invoke__">nl2br</span>(<span class="variable">$data</span>);</span><br><span class="line">            <span class="variable">$mail</span>-&gt;<span class="title function_ invoke__">send</span>();</span><br><span class="line"></span><br><span class="line">            <span class="keyword">echo</span> <span class="string">&quot;Success!&quot;</span>;</span><br><span class="line">        &#125; <span class="keyword">catch</span> (<span class="built_in">Exception</span> <span class="variable">$e</span>) &#123;</span><br><span class="line">            <span class="keyword">echo</span> <span class="string">&quot;Failed!&quot;</span>;</span><br><span class="line">        &#125;</span><br><span class="line">&#125; <span class="keyword">else</span> &#123;</span><br><span class="line">        <span class="variable">$data</span> = <span class="string">&quot;Invalid request from &quot;</span> . <span class="title function_ invoke__">htmlspecialchars</span>(<span class="variable">$ipAddress</span>) . <span class="string">&quot;\n&quot;</span>;</span><br><span class="line">        <span class="title function_ invoke__">file_put_contents</span>(<span class="variable">$outputFile</span>,<span class="variable">$data</span>,FILE_APPEND|LOCK_EX);</span><br><span class="line">&#125;</span><br><span class="line"><span class="meta">?&gt;</span></span><br><span class="line">&lt;/body&gt;&lt;/html&gt;</span><br></pre></td></tr></table></figure>
+
+<p>I’ve omitted the urlhaus.py script, since it mostly contains other checks that are unrelated to this, but it essentially hashed a bunch of previous (normalised) request text and compared them to the one received, without including the host&#x2F;IP&#x2F;ports within it. This allowed me to check that requests matched known exploitation patterns before automatically reporting the extracted URLs. </p>
+<p>Each attack is logged and I get notifications directly when they are received, skipping the usual logs that I’d audit regularly. But more importantly, we are now reporting directly to URLhaus when we receive them. These reports can help protect users as their blocklists are trusted and used by professionals across the industry. </p>
+<p><img src="/images/log2.png" alt="Logs"></p>
+<p><a target="_blank" rel="noopener" href="https://urlhaus.abuse.ch/">URLhaus</a> is an amazing resource and it really is one of the best community-driven projects that exists even today. I highly recommend finding some way to do something similar, providing that you can do so safely, because doing so will not just potentially protect your visitors&#x2F;users&#x2F;clients&#x2F;customers, but it will also help protect the wider Internet too, and this is something that is important, especially as the Internet continues to grow.</p>
+<p>This allowed me to contribute to URLhaus much faster and with much better information regarding the attempted attacks we were receiving. There are many other methods for setting up similar things like honeypots, but this is just one random idea that I had and wanted to use as an excuse to research more into these attacks etc. In the end, I had inserted over 650+ individual hosts and spreaders!</p>
+
+	  
+	</div>
+
+	
+	
+	<div>
+  	<center>
+
+	<div class="pagination">
+
+    
+    
+    <a type="button" class="btn btn-default disabled"><i class="fa fa-arrow-circle-o-left"></i>Prev</a>
+    
+
+    <a href="/" type="button" class="btn btn-default"><i class="fa fa-home"></i>Home</a>
+    
+    <a href="/posts/hello-world/" type="button" class="btn btn-default ">Next<i
+                class="fa fa-arrow-circle-o-right"></i></a>
+    
+
+    
+</div>
+
+
+    </center>
+	</div>
+	
+	<!-- comment -->
+	<!--
+<section id="comment">
+    <h2 class="title">Comments</h2>
+
+    
+</section>
+
+-->
+	
+	
+	
+	</div> <!-- col-md-9/col-md-12 -->
+
+
+	
+	<div id="side_meta">
+		<div class="col-md-3" id="post_meta"> 
+
+	<!-- date -->
+	
+	<div class="meta-widget">
+	<i class="fa fa-clock-o"></i>
+	2026-10-25 
+	</div>
+	
+
+	<!-- categories -->
+    
+
+	<!-- tags -->
+	
+	<div class="meta-widget">
+	<a data-toggle="collapse" data-target="#tags"><i class="fa fa-tags"></i></a>		  
+    <ul id="tags" class="tag_box list-unstyled collapse in">	  
+	    
+  <li><a href="/tags/cyber/">cyber<span>1</span></a></li> <li><a href="/tags/thoughts/">thoughts<span>2</span></a></li>
+    </ul>
+	</div>
+		
+
+	<!-- toc -->
+	<div class="meta-widget">
+	
+	</div>
+	
+    <hr>
+	
+</div><!-- col-md-3 -->
+
+		
+
+	</div>
+	
+		
+
+</div><!-- row -->
+
+<!--
+ -->
+
+
+
+	</div>
+  </div>
+  <div class="container-narrow">
+  <footer> <p>
+  
+  &copy; 2026 LemonHaze's Blog
+  
+      powered by <a href="https://hexo.io/" target="_blank">Hexo</a>.Theme <a href="https://github.com/Ares-X/hexo-theme-freemind.bithack" target="_blank">freemind.bithack</a>  
+</p>
+ </footer>
+</div> <!-- container-narrow -->
+  
+
+
+  
+<a id="gotop" href="#">   
+  <span>⬆︎TOP</span>
+</a>
+
+<script src="/js/jquery.imagesloaded.min.js"></script>
+<script src="/js/gallery.js"></script>
+<script src="/js/bootstrap.min.js"></script>
+<script src="/js/main.js"></script>
+<script src="/js/search.js"></script> 
+
+
+
+
+   <script type="text/javascript">      
+     var search_path = "search.xml";
+	 if (search_path.length == 0) {
+	 	search_path = "search.xml";
+	 }
+	 var path = "/" + search_path;
+     searchFunc(path, 'local-search-input', 'local-search-result');
+   </script>
+
+</body>
+   </html>
