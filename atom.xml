@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="utf-8"?>
+<feed xmlns="http://www.w3.org/2005/Atom">
+  <author>
+    <name>LemonHaze</name>
+  </author>
+  <generator uri="https://hexo.io/">Hexo</generator>
+  <id>https://lemonhaze420.github.io/</id>
+  <link href="https://lemonhaze420.github.io/" rel="alternate"/>
+  <link href="https://lemonhaze420.github.io/atom.xml" rel="self"/>
+  <rights>All rights reserved 2026, LemonHaze</rights>
+  <subtitle>Random thoughts and things I find interesting</subtitle>
+  <title>LemonHaze</title>
+  <updated>2026-10-25T12:39:02.000Z</updated>
+  <entry>
+    <author>
+      <name>LemonHaze</name>
+    </author>
+    <category term="thoughts" scheme="https://lemonhaze420.github.io/tags/thoughts/"/>
+    <content>
+      <![CDATA[<p>Sometimes I have stuff to say that I’d want to send to other people etc, or otherwise just yap about, and I will do this here when I want to.</p><span id="more"></span><p>Not too sure how often I’ll end up posting or using it, but here it is anyways </p><p><img src="https://raw.githubusercontent.com/LemonHaze420/LemonHaze420/master/peepoGlad.jpg" alt="peepoGlad"></p>]]>
+    </content>
+    <id>https://lemonhaze420.github.io/posts/hello-world/</id>
+    <link href="https://lemonhaze420.github.io/posts/hello-world/"/>
+    <published>2026-10-25T13:28:00.000Z</published>
+    <summary>
+      <![CDATA[<p>Sometimes I have stuff to say that I’d want to send to other people etc, or otherwise just yap about, and I will do this here when I want to.</p>]]>
+    </summary>
+    <title>Hello, World!</title>
+    <updated>2026-10-25T12:39:02.000Z</updated>
+  </entry>
+</feed>
